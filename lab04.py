@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
 '''
-A set of tools and routines for solving Lab 03: Permafrost Thawing
+A set of tools and routines for solving Lab 04: Permafrost Thawing
 
-heatdiff is a function that calculates the diffusion equation using 
-a forward difference. This function is helpful for answering prompt 1
-from the lab.
-
-temp_kanger is a function returning the temperature at the surface
-in Kangerlussuaq, Greenland.
-
-permafrost is the heatdiff function, but applied specifically to 
-permfrost. This means that the initial and boundary conditions are
-different and the function is dependent on temp_kanger.
-
-
+>>> run lab04.py
+>>> plt.ion()
+>>> print_verification()
+>>> plot_heat_map()
+>>> plot_profile()
 
 '''
 # import libraries
@@ -32,6 +25,10 @@ c2 = (0.25 * 24 *3600)/(1000**2)
 
 def heatdiff(xmax, tmax, dx, dt, c2=1, debug=False):
     '''
+    heatdiff is a function that calculates the diffusion equation using 
+    a forward difference. This function is helpful for answering prompt 1
+    from the lab.
+
     Parameters:
     -----------
     xmax : float
@@ -99,10 +96,9 @@ def heatdiff(xmax, tmax, dx, dt, c2=1, debug=False):
     # Return grid and result:
     return xgrid, tgrid, U
 
-# Print verification to help answer prompt 1
-print(heatdiff(1, 0.2,0.2,0.02))
-
-
+def print_verification():
+    # Print verification to help answer prompt 1
+    print(heatdiff(1, 0.2,0.2,0.02))
 
 
 # Kangerlussuaq average temperature data (in °C)
@@ -126,6 +122,10 @@ def temp_kanger(t):
 
 def permafrost(xmax, tmax, dx, dt, c2 = c2, debug=False):
     '''
+    permafrost is the heatdiff function, but applied specifically to 
+    permfrost. This means that the initial and boundary conditions are
+    different and the function is dependent on temp_kanger.
+
     Parameters:
     -----------
     xmax : float
@@ -152,7 +152,8 @@ def permafrost(xmax, tmax, dx, dt, c2 = c2, debug=False):
         Size is (M, N) where M is the number of spatial points and N is the number of time points.    
     '''
     if dt > dx**2 / (2 * c2):
-        raise ValueError('dt is too large! Must be less than dx**2 / (2*c2) for stability')
+        raise ValueError('dt is too large! Must be less than dx**2 / \
+            (2*c2) for stability')
     
     # Calculate grid size
     M = int(np.round(xmax / dx + 1))
@@ -186,55 +187,59 @@ def permafrost(xmax, tmax, dx, dt, c2 = c2, debug=False):
 # Run the permafrost function to simulate heat diffusion
 xgrid, tgrid, U = permafrost(xmax, tmax, dx, dt)
 
-# Plot heatmap of time vs depth
-plt.figure(figsize=(10, 6))
-plt.imshow(U, aspect='auto', extent=[tgrid.min()/365, tgrid.max()/365, xgrid.max(), xgrid.min()], cmap='seismic', vmin=-25, vmax=25)
-# Plot colorbar
-plt.colorbar(label='Temperature (°C)')
-# Label axes and title
-plt.xlabel('Time (years)')
-plt.ylabel('Depth (meters)')
-plt.title('Ground Temperature: Kangerlussauq, Greenland')
-plt.show()
+def plot_heat_map():
+    # Plot heatmap of time vs depth
+    plt.figure(figsize=(10, 6))
+    plt.imshow(U, aspect='auto', extent=[tgrid.min()/365, tgrid.max()/365, \
+        xgrid.max(), xgrid.min()], cmap='seismic', vmin=-25, vmax=25)
+    # Plot colorbar
+    plt.colorbar(label='Temperature (°C)')
+    # Label axes and title
+    plt.xlabel('Time (years)')
+    plt.ylabel('Depth (meters)')
+    plt.title('Ground Temperature: Kangerlussauq, Greenland')
+    plt.show()
 
-# Second Plot: Winter and Summer profile of temperatures over the final year
-# Index for the final 365 days, considering dt=0.25 days
-loc = int(-365 / dt)
-# Minimum temperature profile for each depth
-winter = U[:, loc:].min(axis=1) 
-# Maximum temperature profile for each depth 
-summer = U[:, loc:].max(axis=1)  
+def plot_profile():
 
-# Find the shallowest and deepest points where the summer temperature profile stays below 0°C
-shallow_permafrost_idx = np.where((summer < 0) & (xgrid >= 0) & (xgrid <= 20))[0][0]  # Shallowest within 0-20m
-deep_permafrost_idx = np.where(summer < 0)[0][-1]  # Deepest point where temp < 0
+    # Second Plot: Winter and Summer profile of temperatures over the final year
+    # Index for the final 365 days, considering dt=0.25 days
+    loc = int(-365 / dt)
+    # Minimum temperature profile for each depth
+    winter = U[:, loc:].min(axis=1) 
+    # Maximum temperature profile for each depth 
+    summer = U[:, loc:].max(axis=1)  
 
-# Get the depth range for permafrost shading
-shallow_permafrost_depth = xgrid[shallow_permafrost_idx]
-deep_permafrost_depth = xgrid[deep_permafrost_idx]
+    # Find the shallowest and deepest points where the summer temperature profile stays below 0°C
+    shallow_permafrost_idx = np.where((summer < 0) & (xgrid >= 0) & (xgrid <= 20))[0][0]  # Shallowest within 0-20m
+    deep_permafrost_idx = np.where(summer < 0)[0][-1]  # Deepest point where temp < 0
 
-# Print the results
-print(f"Active layer ends at approximately {shallow_permafrost_depth:.2f} meters depth.")
-print(f"Permafrost ends at approximately {deep_permafrost_depth:.2f} meters depth.")
+    # Get the depth range for permafrost shading
+    shallow_permafrost_depth = xgrid[shallow_permafrost_idx]
+    deep_permafrost_depth = xgrid[deep_permafrost_idx]
 
-# Plot second figure
-fig, ax2 = plt.subplots(1, 1)
-ax2.plot(winter, xgrid, label='Winter')
-ax2.plot(summer, xgrid, linestyle='--', color='red', label='Summer')
+    # Print the results
+    print(f"Active layer ends at approximately {shallow_permafrost_depth:.2f} meters depth.")
+    print(f"Permafrost ends at approximately {deep_permafrost_depth:.2f} meters depth.")
 
-# Shade the permafrost region between the shallow and deep boundaries
-ax2.fill_betweenx(xgrid, -15, 15, where=(xgrid >= shallow_permafrost_depth) & (xgrid <= deep_permafrost_depth), 
-                  color='cyan', alpha=0.3, label='Permafrost')
+    # Plot second figure
+    fig, ax2 = plt.subplots(1, 1)
+    ax2.plot(winter, xgrid, label='Winter')
+    ax2.plot(summer, xgrid, linestyle='--', color='red', label='Summer')
 
-# Label title and axes
-ax2.set_xlabel('Temperature (°C)')
-ax2.set_ylabel('Depth (meters)')
-ax2.set_title('Ground Temperature: Kangerlussauq, Greenland')
-# Set limits for x and y axes
-ax2.set_ylim(0, 100)
-ax2.set_xlim(-15, 15)
- # Invert y-axis so depth increases downward
-ax2.invert_yaxis() 
-# Create Legend
-ax2.legend()
-plt.show()
+    # Shade the permafrost region between the shallow and deep boundaries
+    ax2.fill_betweenx(xgrid, -15, 15, where=(xgrid >= shallow_permafrost_depth) & (xgrid <= deep_permafrost_depth), 
+                    color='cyan', alpha=0.3, label='Permafrost')
+
+    # Label title and axes
+    ax2.set_xlabel('Temperature (°C)')
+    ax2.set_ylabel('Depth (meters)')
+    ax2.set_title('Ground Temperature: Kangerlussauq, Greenland')
+    # Set limits for x and y axes
+    ax2.set_ylim(0, 100)
+    ax2.set_xlim(-15, 15)
+    # Invert y-axis so depth increases downward
+    ax2.invert_yaxis() 
+    # Create Legend
+    ax2.legend()
+    plt.show()
